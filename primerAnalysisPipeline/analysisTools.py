@@ -53,7 +53,7 @@ def get_access_token(client_id, client_secret, idt_username, idt_password):
 
     # Error and return the response from the endpoint if there was a problem
     if response.status != 200:
-        raise RuntimeError("Request failed with error code:" + response.status + "Body:" + body)
+        raise RuntimeError(f"Request failed with error code: {response.status}. Body: {body}")
 
     body_dict = json.loads(body)
     return body_dict["access_token"]
@@ -79,7 +79,7 @@ def self_dimerization(sequence, access_token):
     body = response.read().decode()
 
     if response.status != 200:
-        raise RuntimeError("Request failed with error code:" + response.status + "Body:" + body)
+        raise RuntimeError(f"Request failed with error code: {response.status}. Body: {body}")
 
     return json.loads(body)
 
@@ -104,7 +104,7 @@ def hetero_dimerization(primary_sequence, secondary_sequence, access_token):
     body = response.read().decode()
 
     if response.status != 200:
-        raise RuntimeError("Request failed with error code:" + response.status + "Body:" + body)
+        raise RuntimeError(f"Request failed with error code: {response.status}. Body: {body}")
 
     return json.loads(body)
 

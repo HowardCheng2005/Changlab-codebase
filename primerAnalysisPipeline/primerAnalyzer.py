@@ -6,20 +6,25 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-f", "--forward", required=True, help="forward binding sequence")
     parser.add_argument("-r", "--reverse", required=True, help="reverse binding sequence")
-    parser.add_argument("-s", "--self", required=False, help="self-dimerization weight")
-    parser.add_argument("-h", "--hetero", required=False, help="heterogeneous dimerization weight")
+    parser.add_argument("-a", "--forward_primer", required=True, help="forward primer sequence without binding region" )
+    parser.add_argument("-b", "--reverse_primer", required=True, help="reverse primer sequence without binding region" )
+    parser.add_argument("-sd", "--self", required=False, default=1, type=int, help="self-dimerization weight")
+    parser.add_argument("-h", "--hetero", required=False, default=1, type=int, help="heterogeneous dimerization weight")
     parser.add_argument("-l", "--length", required=True, type=int, help="length of binding sequence")
-    parser.add_argument("-o" "--output", required=True, help="output file")
-    parser.add_argument("-i" "--id", required=True, help="id of the IDT account")
-    parser.add_argument("-s" "--secret", required=True, help="secret of the IDT account")
-    parser.add_argument("-u" "--username", required=True, help="username of the IDT account")
+    parser.add_argument("-i", "--id", required=True, help="id of the IDT account")
+    parser.add_argument("-sc", "--secret", required=True, help="secret of the IDT account")
+    parser.add_argument("-u", "--username", required=True, help="username of the IDT account")
     parser.add_argument("-p", "--password", required=True, help="password of the IDT account")
+    parser.add_argument("-o", "--output", required=True, help="output file")
+
 
     args = parser.parse_args()
 
     forward_sequence = args.forward
     reverse_sequence = args.reverse
-    primer_length = args.length
+    forward_primer = args.forward_primer
+    reverse_primer = args.reverse_primer
+    binding_sequence_length = args.length
     output_file = args.output
 
     # accesses IDT API
@@ -32,8 +37,8 @@ if __name__ == "__main__":
     access_token = get_access_token(idt_identity, idt_secret, username, password)
 
     # gets every possible shifted combination of the forward and reverse primers
-    forward_combinations = get_primer_combinations(forward_sequence, primer_length)
-    reverse_combinations = get_primer_combinations(reverse_sequence, primer_length)
+    forward_combinations = get_primer_combinations(forward_sequence, binding_sequence_length)
+    reverse_combinations = get_primer_combinations(reverse_sequence, binding_sequence_length)
 
     # weights for the self-dimerization and hetero-dimerization
     self_weight = args.self
@@ -54,42 +59,37 @@ if __name__ == "__main__":
     dimerization_df = pd.DataFrame(data)
 
     # dictionary for all forward and reverse dimerization data
-    forward_score = {}
-    reverse_score = {}
+    forward_dict = {}
+    reverse_dict = {}
 
     for forward_combination in forward_combinations:
         # Find self-dimerization scores for all forward combinations
-        forward_self_dimer = self_dimerization(forward_combination, access_token)
+        forward_sequence = forward_primer + forward_combination
+        forward_self_dimer = self_dimerization(forward_sequence, access_token)
         forward_score = forward_self_dimer["score"]
         forward_binding_sequence = forward_self_dimer["sequence"]
-        print(f"Forward self dimerization score for {forward_combination}: {self_weight}")
+        print(f"Forward self dimerization score for {forward_combination}: {forward_score}")
 
-        forward_info = [forward_binding_sequence, forward_score]
-        forward_score[forward_combination] = forward_score
+        forward_dict[forward_combination] = [forward_binding_sequence, forward_score, forward_sequence]
 
     for reverse_combination in reverse_combinations:
         # Find self-dimerization scores for all reverse combinations
-        reverse_self_dimerization = self_dimerization(reverse_combination, access_token)
+        reverse_sequence = reverse_primer + reverse_combination
+        reverse_self_dimerization = self_dimerization(reverse_sequence, access_token)
         reverse_score = reverse_self_dimerization["score"]
         reverse_binding_sequence = reverse_self_dimerization["sequence"]
-        print(f"Reverse self dimerization score for {reverse_combination}: {self_weight}")
+        print(f"Reverse self dimerization score for {reverse_combination}: {reverse_score}")
 
-        reverse_info = [reverse_binding_sequence, reverse_score]
-        reverse_score[reverse_combination] = reverse_score
+        reverse_dict[reverse_combination] = [reverse_binding_sequence, reverse_score, reverse_sequence]
 
 
     for forward_combination in forward_combinations:
         for reverse_combination in reverse_combinations:
             #Find hetero-dimerization scores for all forward and reverse pairings
-            forward_data = forward_score[forward_combination]
-            reverse_data = reverse_score[reverse_combination]
+            forward_self_score, forward_self_binding, forward_self_sequence = forward_dict[forward_combination]
+            reverse_self_score, reverse_self_binding, reverse_self_sequence = reverse_dict[reverse_combination]
 
-            forward_self_score = forward_data["score"]
-            forward_self_binding = forward_data["sequence"]
-            reverse_self_score = reverse_data["score"]
-            reverse_self_binding = reverse_data["sequence"]
-
-            het_dimerization = hetero_dimerization(reverse_combination, access_token)
+            het_dimerization = hetero_dimerization(forward_self_sequence, reverse_self_sequence, access_token)
             het_score = hetero_dimerization["score"]
             het_binding_sequence = hetero_dimerization["sequence"]
 
@@ -99,22 +99,22 @@ if __name__ == "__main__":
             combined_score = (self_weight * forward_self_score) + (self_weight * reverse_self_score) + (
                 het_weight * het_score)
 
-            new_combination = pd.DataFrame({
+            new_combination = pd.DataFrame([{
                 "forward_read": forward_combination,
                 "reverse_read": reverse_combination,
                 "forward_self_dimer": forward_self_score,
                 "forward_binding_sequence": forward_self_binding,
                 "reverse_self_dimer": reverse_self_score,
-                "reverse_self_binding_sequence": reverse_self_binding,
+                "reverse_binding_sequence": reverse_self_binding,
                 "het_dimer": het_score,
                 "het_binding_sequence": het_binding_sequence,
                 "combined_score": combined_score
-            })
+            }])
 
-            data = pd.concat([data, new_combination])
+            dimerization_df = pd.concat([data, new_combination])
 
     # Sort data
-    sorted_data = data.sort_values(by=["combined_score"], ascending=True)
+    sorted_data = dimerization_df.sort_values(by=["combined_score"], ascending=True)
 
     # convert to .csv format
     sorted_data.to_csv(output_file, index=False)
