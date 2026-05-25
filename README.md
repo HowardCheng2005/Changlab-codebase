@@ -18,3 +18,4 @@ self-dimerization and heterogenous dimerization scores
 * -u: username for IDT
 * -p: password for IDT
 * -o: output file pathway
+

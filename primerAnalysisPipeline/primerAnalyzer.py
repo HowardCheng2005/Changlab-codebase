@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from analysisTools import get_primer_combinations, get_access_token, self_dimerization, hetero_dimerization
 import pandas as pd
+import time
 
 if __name__ == "__main__":
     parser = ArgumentParser()
@@ -71,6 +72,9 @@ if __name__ == "__main__":
         print(f"Forward self dimerization score for {forward_combination}: {forward_score}")
 
         forward_dict[forward_combination] = [forward_binding_sequence, forward_score, forward_sequence]
+        # Delay for 300 API calls per minute
+        time.sleep(0.2)
+
 
     for reverse_combination in reverse_combinations:
         # Find self-dimerization scores for all reverse combinations
@@ -81,6 +85,8 @@ if __name__ == "__main__":
         print(f"Reverse self dimerization score for {reverse_combination}: {reverse_score}")
 
         reverse_dict[reverse_combination] = [reverse_binding_sequence, reverse_score, reverse_sequence]
+        #Delay for 300 API calls per minute
+        time.sleep(0.2)
 
 
     for forward_combination in forward_combinations:
@@ -112,9 +118,13 @@ if __name__ == "__main__":
             }])
 
             dimerization_df = pd.concat([data, new_combination])
+            #Delay for 300 API calls per minute
+            time.sleep(0.2)
 
     # Sort data
+    print(f"Sorting data")
     sorted_data = dimerization_df.sort_values(by=["combined_score"], ascending=True)
 
     # convert to .csv format
+    print(f"Sorting done. writing to {output_file}")
     sorted_data.to_csv(output_file, index=False)

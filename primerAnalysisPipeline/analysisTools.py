@@ -3,6 +3,13 @@ import json
 from urllib import request, parse
 
 def get_primer_combinations(sequence, length):
+    """
+    Create a list of possible binding sequence combinations based on a set region and a predetermined length
+    :param sequence: the entire potential binding region
+    :param length: length of the binding sequence for the primer
+
+    :return: list of binding sequence combinations
+    """
     region_length = len(sequence)
 
     if region_length < length:
