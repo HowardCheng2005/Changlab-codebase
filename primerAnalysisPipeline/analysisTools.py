@@ -116,9 +116,9 @@ def hetero_dimerization(primary_sequence, secondary_sequence, access_token):
 
     return json.loads(body)
 
-def binding_location_calculator(top_sequence, bond_sequence, bottom_sequence, top_padding, bond_padding, bottom_padding,offset=15):
+def binding_location_calculator(top_sequence, bond_sequence, top_padding, bond_padding, bottom_padding,offset=15):
     indexed_top = ([0]*top_padding) + top_sequence
-    indexed_bottom = ([0]*bottom_padding) + bottom_sequence.reverse()
+    # indexed_bottom = ([0]*bottom_padding) + bottom_sequence.reverse()
     indexed_bonds = ([0]*bond_padding) + bond_sequence
 
     index_top = len(indexed_top)
@@ -130,7 +130,11 @@ def binding_location_calculator(top_sequence, bond_sequence, bottom_sequence, to
     # needs to work on indexing
     for i in range(offset):
         top_score += indexed_bonds[index_top - 1 - i]
-        bottom_score += indexed_bonds[index_bottom + i]
+
+        if len(indexed_bonds) > (index_bottom + i):
+            bottom_score += indexed_bonds[index_bottom + i]
+        else:
+            continue
 
 
     return top_score, bottom_score

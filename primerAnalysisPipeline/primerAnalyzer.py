@@ -1,5 +1,7 @@
 from argparse import ArgumentParser
-from analysisTools import get_primer_combinations, get_access_token, self_dimerization, hetero_dimerization
+from idlelib.sidebar import get_end_linenumber
+
+from analysisTools import get_primer_combinations, get_access_token, self_dimerization, hetero_dimerization, binding_location_calculator
 import pandas as pd
 import time
 
@@ -72,10 +74,16 @@ if __name__ == "__main__":
         forward_sequence = forward_primer + forward_combination
         forward_self_dimer = self_dimerization(forward_sequence, access_token)[0]
         forward_score = forward_self_dimer["DeltaG"]
-        forward_binding_sequence = forward_self_dimer["Bonds"]
+
+        # for binding sequence analysis
+        forward_binding = forward_self_dimer["Bonds"]
+        forward_top_padding = forward_self_dimer["TopLinePadding"]
+        forward_bond_padding = forward_self_dimer["BondLinePadding"]
+        forward_bottom_padding = forward_self_dimer["BottomLinePadding"]
+        forward_end, _ = binding_location_calculator(forward_sequence, forward_binding, forward_top_padding, forward_bond_padding, forward_bottom_padding, OFFSET)
         print(f"Forward self dimerization score for {forward_combination}: {forward_score}")
 
-        forward_dict[forward_combination] = [forward_binding_sequence, forward_score, forward_sequence]
+        forward_dict[forward_combination] = [forward_end, forward_score, forward_sequence]
         # Delay for 300 API calls per minute
         time.sleep(0.2)
 
@@ -85,10 +93,16 @@ if __name__ == "__main__":
         reverse_sequence = reverse_primer + reverse_combination
         reverse_self_dimerization = self_dimerization(reverse_sequence, access_token)[0]
         reverse_score = reverse_self_dimerization["DeltaG"]
-        reverse_binding_sequence = reverse_self_dimerization["Bonds"]
+
+        # for binding sequence analysis
+        reverse_binding = reverse_self_dimerization["Bonds"]
+        reverse_top_padding = reverse_self_dimerization["TopLinePadding"]
+        reverse_bond_padding = reverse_self_dimerization["BondLinePadding"]
+        reverse_bottom_padding = reverse_self_dimerization["BottomLinePadding"]
+        reverse_end, _ = binding_location_calculator(reverse_sequence, reverse_binding, reverse_top_padding, reverse_bond_padding, reverse_bottom_padding, OFFSET)
         print(f"Reverse self dimerization score for {reverse_combination}: {reverse_score}")
 
-        reverse_dict[reverse_combination] = [reverse_binding_sequence, reverse_score, reverse_sequence]
+        reverse_dict[reverse_combination] = [reverse_end, reverse_score, reverse_sequence]
         #Delay for 300 API calls per minute
         time.sleep(0.2)
 
@@ -96,12 +110,25 @@ if __name__ == "__main__":
     for forward_combination in forward_combinations:
         for reverse_combination in reverse_combinations:
             #Find hetero-dimerization scores for all forward and reverse pairings
-            forward_self_binding, forward_self_score, forward_self_sequence = forward_dict[forward_combination]
-            reverse_self_binding, reverse_self_score, reverse_self_sequence = reverse_dict[reverse_combination]
+            forward_self_end, forward_self_score, forward_self_sequence = forward_dict[forward_combination]
+            reverse_self_end, reverse_self_score, reverse_self_sequence = reverse_dict[reverse_combination]
 
             het_dimerization = hetero_dimerization(forward_self_sequence, reverse_self_sequence, access_token)[0]
-            het_score = hetero_dimerization["DeltaG"]
-            het_binding_sequence = hetero_dimerization["Bonds"]
+            het_score = het_dimerization["DeltaG"]
+
+            # for binding analysis
+            het_binding = het_dimerization["Bonds"]
+            het_top_padding = het_dimerization["TopLinePadding"]
+            het_bond_padding = het_dimerization["BondLinePadding"]
+            het_bottom_padding = het_dimerization["BottomLinePadding"]
+            het_end_forward, het_end_reverse = binding_location_calculator(
+                forward_self_sequence,
+                het_binding,
+                het_top_padding,
+                het_bond_padding,
+                het_bottom_padding,
+                OFFSET
+            )
 
             print(f"hetero dimerization score for {forward_combination} and {reverse_combination}: {het_score}")
 
@@ -110,17 +137,17 @@ if __name__ == "__main__":
                 het_weight * het_score)
 
             # IF bd != 0, factors in whether the dimerization occurs in the last 15 nucleotides or not for both self-dimerization and heterogeneous dimerization
-
+            combined_score -= binding_weight * (forward_self_end + reverse_self_end + het_end_reverse + het_end_forward)
 
             new_combination = pd.DataFrame([{
                 "forward_read": forward_combination,
                 "reverse_read": reverse_combination,
                 "forward_self_dimer": forward_self_score,
-                "forward_binding_sequence": forward_self_binding,
+                "forward_binding_sequence": forward_self_end,
                 "reverse_self_dimer": reverse_self_score,
-                "reverse_binding_sequence": reverse_self_binding,
+                "reverse_binding_sequence": reverse_self_end,
                 "het_dimer": het_score,
-                "het_binding_sequence": het_binding_sequence,
+                "het_binding_sequence": f"{het_end_forward}, {het_end_reverse}",
                 "combined_score": combined_score
             }])
 
