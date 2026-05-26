@@ -10,8 +10,9 @@ self-dimerization and heterogenous dimerization scores
 * -r: potential reverse binding sequence area
 * -a: forward primer sequence without binding area
 * -b: reverse primer sequence without binding area
-* -sd: self-dimerization weight for tuning (optional s = 1)
-* -h: heterogeneous dimerization weight for tuning (optional h = 1)
+* -sd: self-dimerization weight for tuning (optional sd = 1)
+* -hd: heterogeneous dimerization weight for tuning (optional hd = 1)
+* -bd: weight for checking dimerization in the last 15 nucleotides of the binding region (optional bd = 0) 
 * -l: length for the binding sequence itself
 * -i: id for API
 * -sc: secret for API

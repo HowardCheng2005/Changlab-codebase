@@ -1,5 +1,6 @@
 from base64 import b64encode
 import json
+from operator import index
 from urllib import request, parse
 
 def get_primer_combinations(sequence, length):
@@ -115,3 +116,21 @@ def hetero_dimerization(primary_sequence, secondary_sequence, access_token):
 
     return json.loads(body)
 
+def binding_location_calculator(top_sequence, bond_sequence, bottom_sequence, top_padding, bond_padding, bottom_padding,offset=15):
+    indexed_top = ([0]*top_padding) + top_sequence
+    indexed_bottom = ([0]*bottom_padding) + bottom_sequence.reverse()
+    indexed_bonds = ([0]*bond_padding) + bond_sequence
+
+    index_top = len(indexed_top)
+    index_bottom = len(bottom_padding)
+    top_score = 0
+    bottom_score = 0
+
+
+    # needs to work on indexing
+    for i in range(offset):
+        top_score += indexed_bonds[index_top - 1 - i]
+        bottom_score += indexed_bonds[index_bottom + i]
+
+
+    return top_score, bottom_score
