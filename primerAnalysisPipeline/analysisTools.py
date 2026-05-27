@@ -1,6 +1,5 @@
 from base64 import b64encode
 import json
-from operator import index
 from urllib import request, parse
 
 def get_primer_combinations(sequence, length):
@@ -116,25 +115,34 @@ def hetero_dimerization(primary_sequence, secondary_sequence, access_token):
 
     return json.loads(body)
 
-def binding_location_calculator(top_sequence, bond_sequence, top_padding, bond_padding, bottom_padding,offset=15):
-    indexed_top = ([0]*top_padding) + top_sequence
-    # indexed_bottom = ([0]*bottom_padding) + bottom_sequence.reverse()
+def binding_location_calculator(top_sequence,
+                                bond_sequence,
+                                top_padding,
+                                bond_padding,
+                                bottom_padding,
+                                offset=15
+                                ):
+
     indexed_bonds = ([0]*bond_padding) + bond_sequence
 
-    index_top = len(indexed_top)
-    index_bottom = len(bottom_padding)
     top_score = 0
     bottom_score = 0
+
+    # Position of the top 3' end within the bond index
+    top_prime_end_pos = top_padding + len(top_sequence) - 1
 
 
     # needs to work on indexing
     for i in range(offset):
-        top_score += indexed_bonds[index_top - 1 - i]
 
-        if len(indexed_bonds) > (index_bottom + i):
-            bottom_score += indexed_bonds[index_bottom + i]
-        else:
-            continue
+        # check top 3' end
+        top_position = top_prime_end_pos - i
+        if 0 <= top_position < len(indexed_bonds):
+            top_score += indexed_bonds[top_position]
 
+        # check bottom 3' end
+        bottom_position = bottom_padding + i
+        if 0 <= bottom_position < len(indexed_bonds):
+            bottom_score += indexed_bonds[bottom_position]
 
     return top_score, bottom_score
