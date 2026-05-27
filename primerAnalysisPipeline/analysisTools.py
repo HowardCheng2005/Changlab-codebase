@@ -63,7 +63,7 @@ def get_access_token(client_id, client_secret, idt_username, idt_password):
         raise RuntimeError(f"Request failed with error code: {response.status}. Body: {body}")
 
     body_dict = json.loads(body)
-    return body_dict["access_token"]
+    return body_dict["access_token"], body_dict["expires_in"]
 
 def self_dimerization(sequence, access_token):
     url = "https://www.idtdna.com/restapi/v1/OligoAnalyzer/SelfDimer"

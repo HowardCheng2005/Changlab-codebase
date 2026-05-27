@@ -7,6 +7,17 @@ import time
 OFFSET = 15
 DELAY = 0.1
 
+def token_updater(access_token, expire_time):
+    if time.time() >= (expire_time - 60):
+        print("Access token expired, creating new token")
+
+        new_token, new_token_expiration = get_access_token(idt_identity, idt_secret, username, password)
+        print(f"New token created with expiration: {new_token_expiration}")
+
+        return new_token, (time.time() + new_token_expiration)
+
+    return access_token, expire_time
+
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-f", "--forward", required=True, help="forward binding sequence")
@@ -40,7 +51,9 @@ if __name__ == "__main__":
     password = args.password
 
     # access token for IDT
-    access_token = get_access_token(idt_identity, idt_secret, username, password)
+    access_token, token_expiration = get_access_token(idt_identity, idt_secret, username, password)
+    expire_time = time.time() + token_expiration
+    print(f"access_token created, expires in: {token_expiration}")
 
     # gets every possible shifted combination of the forward and reverse primers
     forward_combinations = get_primer_combinations(forward_raw, binding_sequence_length)
@@ -70,6 +83,9 @@ if __name__ == "__main__":
     reverse_dict = {}
 
     for forward_combination in forward_combinations:
+        #checks/updates token if it is about to expire
+        access_token, expire_time = token_updater(access_token, expire_time)
+
         # Find self-dimerization scores for all forward combinations
         forward_sequence = forward_primer + forward_combination
         forward_self_dimer = self_dimerization(forward_sequence, access_token)[0]
@@ -96,6 +112,9 @@ if __name__ == "__main__":
 
 
     for reverse_combination in reverse_combinations:
+        # checks/updates access tokens
+        access_token, expire_time = token_updater(access_token, expire_time)
+
         # Find self-dimerization scores for all reverse combinations
         reverse_sequence = reverse_primer + reverse_combination
         reverse_self_dimerization = self_dimerization(reverse_sequence, access_token)[0]
@@ -123,6 +142,9 @@ if __name__ == "__main__":
 
     for forward_combination in forward_combinations:
         for reverse_combination in reverse_combinations:
+            # Checks for access tokens and expiry time
+            access_token, expire_time = token_updater(access_token, expire_time)
+
             #Find hetero-dimerization scores for all forward and reverse pairings
             forward_self_end, forward_self_score, forward_self_sequence = forward_dict[forward_combination]
             reverse_self_end, reverse_self_score, reverse_self_sequence = reverse_dict[reverse_combination]
