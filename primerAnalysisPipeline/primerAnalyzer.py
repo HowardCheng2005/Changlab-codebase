@@ -5,6 +5,7 @@ import pandas as pd
 import time
 
 OFFSET = 15
+DELAY = 0.1
 
 if __name__ == "__main__":
     parser = ArgumentParser()
@@ -91,7 +92,7 @@ if __name__ == "__main__":
 
         forward_dict[forward_combination] = [(forward_top_end + forward_bottom_end), forward_score, forward_sequence]
         # Delay for 300 API calls per minute
-        time.sleep(0.2)
+        time.sleep(DELAY)
 
 
     for reverse_combination in reverse_combinations:
@@ -117,7 +118,7 @@ if __name__ == "__main__":
 
         reverse_dict[reverse_combination] = [(reverse_top_end + reverse_bottom_end), reverse_score, reverse_sequence]
         #Delay for 300 API calls per minute
-        time.sleep(0.2)
+        time.sleep(DELAY)
 
 
     for forward_combination in forward_combinations:
@@ -167,7 +168,7 @@ if __name__ == "__main__":
 
             dimerization_df = pd.concat([dimerization_df, new_combination], ignore_index=True)
             #Delay for 300 API calls per minute
-            time.sleep(0.2)
+            time.sleep(DELAY)
 
     # Sort data
     print(f"Sorting data")
