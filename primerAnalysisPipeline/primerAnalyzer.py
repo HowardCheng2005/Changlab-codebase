@@ -37,6 +37,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # raw reads assignment
     forward_raw = args.forward
     reverse_raw = args.reverse
     forward_primer = args.forward_primer
@@ -50,7 +51,7 @@ if __name__ == "__main__":
     username = args.username
     password = args.password
 
-    # access token for IDT
+    # Creates the access token for your IDT API, with expiry timer
     access_token, token_expiration = get_access_token(idt_identity, idt_secret, username, password)
     expire_time = time.time() + token_expiration
     print(f"access_token created, expires in: {token_expiration}")
@@ -68,13 +69,13 @@ if __name__ == "__main__":
     data = {
         "forward_read": [],
         "reverse_read": [],
-        "forward_self_dimer": [],
-        "forward_3_end": [],
+        "forward_self_dimer": [], # self dimerization scores
+        "forward_3_end": [], # analysis for bonds near the 3' end
         "reverse_self_dimer": [],
         "reverse_3_end": [],
         "het_dimer": [],
         "het_3_end": [],
-        "combined_score": []
+        "combined_score": [] # combined final score to determine pair performance
     }
     dimerization_df = pd.DataFrame(data)
 
@@ -91,7 +92,7 @@ if __name__ == "__main__":
         forward_self_dimer = self_dimerization(forward_sequence, access_token)[0]
         forward_score = forward_self_dimer["DeltaG"]
 
-        # for binding sequence analysis
+        # for 3' end binding analysis
         forward_binding = forward_self_dimer["Bonds"]
         forward_top_padding = forward_self_dimer["TopLinePadding"]
         forward_bond_padding = forward_self_dimer["BondLinePadding"]
@@ -106,8 +107,9 @@ if __name__ == "__main__":
         )
         print(f"Forward self dimerization score for {forward_combination}: {forward_score}")
 
+        # updates dictionary with new reverse read
         forward_dict[forward_combination] = [(forward_top_end + forward_bottom_end), forward_score, forward_sequence]
-        # Delay for 300 API calls per minute
+        # Delay for less than 500 API calls per minute
         time.sleep(DELAY)
 
 
@@ -120,7 +122,7 @@ if __name__ == "__main__":
         reverse_self_dimerization = self_dimerization(reverse_sequence, access_token)[0]
         reverse_score = reverse_self_dimerization["DeltaG"]
 
-        # for binding sequence analysis
+        # for 3' end binding analysis
         reverse_binding = reverse_self_dimerization["Bonds"]
         reverse_top_padding = reverse_self_dimerization["TopLinePadding"]
         reverse_bond_padding = reverse_self_dimerization["BondLinePadding"]
@@ -135,11 +137,12 @@ if __name__ == "__main__":
         )
         print(f"Reverse self dimerization score for {reverse_combination}: {reverse_score}")
 
+        # Updates dictionary with new reverse read
         reverse_dict[reverse_combination] = [(reverse_top_end + reverse_bottom_end), reverse_score, reverse_sequence]
         #Delay for 300 API calls per minute
         time.sleep(DELAY)
 
-
+    # Heterogeneous binding analysis
     for forward_combination in forward_combinations:
         for reverse_combination in reverse_combinations:
             # Checks for access tokens and expiry time
@@ -149,6 +152,7 @@ if __name__ == "__main__":
             forward_self_end, forward_self_score, forward_self_sequence = forward_dict[forward_combination]
             reverse_self_end, reverse_self_score, reverse_self_sequence = reverse_dict[reverse_combination]
 
+            # Uses API for heterogeneous binding scores
             het_dimerization = hetero_dimerization(forward_self_sequence, reverse_self_sequence, access_token)[0]
             het_score = het_dimerization["DeltaG"]
 
@@ -176,6 +180,7 @@ if __name__ == "__main__":
             combined_score -= binding_weight * (self_weight * (forward_self_end + reverse_self_end) +
                                                 het_weight * (het_end_reverse + het_end_forward))
 
+            # new row in combination
             new_combination = pd.DataFrame([{
                 "forward_read": forward_combination,
                 "reverse_read": reverse_combination,
@@ -188,6 +193,7 @@ if __name__ == "__main__":
                 "combined_score": combined_score
             }])
 
+            # adds row to the database
             dimerization_df = pd.concat([dimerization_df, new_combination], ignore_index=True)
             #Delay for 300 API calls per minute
             time.sleep(DELAY)
