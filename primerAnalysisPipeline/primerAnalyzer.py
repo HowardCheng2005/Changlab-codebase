@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from analysisTools import get_primer_combinations, get_access_token, self_dimerization, hetero_dimerization, binding_location_calculator
+from analysisTools import get_primer_combinations, get_access_token, self_dimerization, hetero_dimerization, binding_location_calculator, hairpin_analyzer
 import pandas as pd
 import time
 
@@ -17,16 +17,9 @@ data = {
     "reverse_3_end": [],
     "het_dimer": [],
     "het_3_end": [],
-    "combined_score": [] # combined final score to determine pair performance
-}
-
-# import format for the Hairpin Analyzer
-hairpin_input = {
-    "Sequence": "string",
-    "NaConc": 50,
-    "FoldingTemp": 25,
-    "MgConc": 3,
-    "NucleotideType": "DNA"
+    "combined_score": [], # combined final score to determine pair performance
+    "forward_hairpin": [], # score for hairpin sequence analysis
+    "reverse_hairpin": []
 }
 
 def token_updater(access_token, expire_time):
@@ -66,6 +59,15 @@ def self_dimer_scoring (primer, combination, token):
 
     return self_dimer_output
 
+def hairpin_scoring (primer, combination, token):
+
+    sequence = primer + combination
+    hairpin_output = hairpin_analyzer(sequence, token)[0]
+
+    hairpin_score = hairpin_output["deltaG"]
+
+    return hairpin_score
+
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-f", "--forward", required=True, help="forward binding sequence")
@@ -75,6 +77,7 @@ if __name__ == "__main__":
     parser.add_argument("-sd", "--self", required=False, default=1, type=int, help="self-dimerization weight")
     parser.add_argument("-hd", "--hetero", required=False, default=1, type=int, help="heterogeneous dimerization weight")
     parser.add_argument("-bd", "--bind", required=False, default=0, type=int, help="binding dimerization location weight")
+    parser.add_argument("hp", "--hairpin", required=False, default=0, type=int, help="hairpin formation weight")
     parser.add_argument("-l", "--length", required=True, type=int, help="length of binding sequence")
     parser.add_argument("-i", "--id", required=True, help="id of the IDT account")
     parser.add_argument("-sc", "--secret", required=True, help="secret of the IDT account")
@@ -108,10 +111,11 @@ if __name__ == "__main__":
     forward_combinations = get_primer_combinations(forward_raw, binding_sequence_length)
     reverse_combinations = get_primer_combinations(reverse_raw, binding_sequence_length)
 
-    # weights for the self-dimerization, hetero-dimerization, and binding location for dimerization
+    # weights for the self-dimerization, hetero-dimerization, binding location for dimerization, and hairpin structure formation
     self_weight = args.self
     het_weight = args.hetero
     binding_weight = args.bind
+    hairpin_weight = args.hairpin
 
     dimerization_df = pd.DataFrame(data)
 
@@ -127,8 +131,13 @@ if __name__ == "__main__":
 
         print(f"starting forward: {forward_combination}, time: {time.time()}")
 
+        self_dimer_output = self_dimer_scoring(forward_primer, forward_combination, access_token)
+        hairpin_output = hairpin_scoring(forward_primer, forward_combination, access_token)
+
+        forward_output = self_dimer_output.append(hairpin_output)
+
         # updates dictionary with information on new read based on IDT API
-        forward_dict[forward_combination] = self_dimer_scoring(forward_primer, forward_combination, access_token)
+        forward_dict[forward_combination] = forward_output
 
         # Delay for less than 500 API calls per minute
         time.sleep(DELAY)
@@ -141,8 +150,12 @@ if __name__ == "__main__":
 
         print(f"starting reverse: {reverse_combination}, time: {time.time()}")
 
+        self_dimer_output = self_dimer_scoring(reverse_primer, reverse_combination, access_token)
+        hairpin_output = hairpin_scoring(reverse_primer, reverse_combination, access_token)
+        reverse_output = self_dimer_output.append(hairpin_output)
+
         # Updates dictionary with new reverse read
-        reverse_dict[reverse_combination] = self_dimer_scoring(reverse_raw, reverse_combination, access_token)
+        reverse_dict[reverse_combination] = reverse_output
 
         #Delay for 300 API calls per minute
         time.sleep(DELAY)
@@ -158,8 +171,8 @@ if __name__ == "__main__":
             print(f"starting hetero: {forward_combination} and {reverse_combination}, time: {time.time()}")
 
             #Find hetero-dimerization scores for all forward and reverse pairings
-            forward_self_end, forward_self_score, forward_self_sequence = forward_dict[forward_combination]
-            reverse_self_end, reverse_self_score, reverse_self_sequence = reverse_dict[reverse_combination]
+            forward_self_end, forward_self_score, forward_self_sequence, forward_hairpin = forward_dict[forward_combination]
+            reverse_self_end, reverse_self_score, reverse_self_sequence, reverse_hairpin = reverse_dict[reverse_combination]
 
             # Uses API for heterogeneous binding scores
             het_dimerization = hetero_dimerization(forward_self_sequence, reverse_self_sequence, access_token)[0]
@@ -185,9 +198,12 @@ if __name__ == "__main__":
             combined_score = (self_weight * forward_self_score) + (self_weight * reverse_self_score) + (
                 het_weight * het_score)
 
-            # IF bd != 0, factors in whether the dimerization occurs in the last 15 nucleotides or not for both self-dimerization and heterogeneous dimerization
+            # IF bd != 0, factors in whether the dimerization occurs in the last 15 nucleotides or not for both self-dimerization and heterogeneous dimerization for the model
             combined_score -= binding_weight * (self_weight * (forward_self_end + reverse_self_end) +
                                                 het_weight * (het_end_reverse + het_end_forward))
+
+            # IF hp != 0, factors in whether hairpin formation in the forward and reverse reads for the model
+            combined_score -= hairpin_weight * (forward_hairpin + reverse_hairpin)
 
             # new row in combination
             new_combination = pd.DataFrame([{
@@ -199,7 +215,9 @@ if __name__ == "__main__":
                 "reverse_3_end": reverse_self_end,
                 "het_dimer": het_score,
                 "het_3_end": f"{het_end_forward}, {het_end_reverse}",
-                "combined_score": combined_score
+                "combined_score": combined_score,
+                "forward_hairpin": forward_hairpin,
+                "reverse_hairpin": reverse_hairpin,
             }])
 
             # adds row to the database

@@ -139,6 +139,48 @@ def hetero_dimerization(primary_sequence, secondary_sequence, access_token):
 
     return json.loads(body)
 
+def hairpin_analyzer(sequence, access_token):
+    """
+    Analyzes the potential for hairpin sequences via the IDT API
+
+    :param sequence: the input for the API containing the full primer
+    :param access_token: the access token for the IDT API
+    :return: List of potential
+    """
+    url = "https://www.idtdna.com/restapi/v1/OligoAnalyzer/Hairpin"
+    input_sequence = sequence.strip().upper()
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    }
+
+    # import format for the Hairpin Analyzer
+    hairpin_input = {
+        "Sequence": input_sequence,
+        "NaConc": 50,
+        "FoldingTemp": 25,
+        "MgConc": 3,
+        "NucleotideType": "DNA"
+    }
+
+    req = request.Request(
+        url=url,
+        data=json.dumps(hairpin_input).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+
+    response = request.urlopen(req)
+    body = response.read().decode()
+
+    if response.status != 200:
+        raise RuntimeError(f"Request failed with error code: {response.status}. Body: {body}")
+
+    return json.loads(body)
+
+
 def binding_location_calculator(top_sequence,
                                 bond_sequence,
                                 top_padding,
