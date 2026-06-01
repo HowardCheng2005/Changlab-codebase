@@ -7,6 +7,28 @@ import time
 OFFSET = 15
 DELAY = 0.1
 
+#dataframe for dimerization scores
+data = {
+    "forward_read": [],
+    "reverse_read": [],
+    "forward_self_dimer": [], # self dimerization scores
+    "forward_3_end": [], # analysis for bonds near the 3' end
+    "reverse_self_dimer": [],
+    "reverse_3_end": [],
+    "het_dimer": [],
+    "het_3_end": [],
+    "combined_score": [] # combined final score to determine pair performance
+}
+
+# import format for the Hairpin Analyzer
+hairpin_input = {
+    "Sequence": "string",
+    "NaConc": 50,
+    "FoldingTemp": 25,
+    "MgConc": 3,
+    "NucleotideType": "DNA"
+}
+
 def token_updater(access_token, expire_time):
     if time.time() >= (expire_time - 60):
         print("Access token expired, creating new token")
@@ -17,6 +39,32 @@ def token_updater(access_token, expire_time):
         return new_token, (time.time() + new_token_expiration)
 
     return access_token, expire_time
+
+def self_dimer_scoring (primer, combination, token):
+    # Find self-dimerization scores for the chosen combination
+    sequence = primer + combination
+    self_dimer = self_dimerization(sequence, token)[0]
+    score = self_dimer["DeltaG"]
+
+    # for 3' end binding analysis
+    binding = self_dimer["Bonds"]
+    top_padding = self_dimer["TopLinePadding"]
+    bond_padding = self_dimer["BondLinePadding"]
+    bottom_padding = self_dimer["BottomLinePadding"]
+    top_end, bottom_end = binding_location_calculator(
+        sequence,
+        binding,
+        top_padding,
+        bond_padding,
+        bottom_padding,
+        OFFSET
+    )
+    print(f"self dimerization score for {combination}: {score}")
+
+    # format for binding sequence analysis
+    self_dimer_output = [(top_end + bottom_end), score, sequence]
+
+    return self_dimer_output
 
 if __name__ == "__main__":
     parser = ArgumentParser()
@@ -65,88 +113,49 @@ if __name__ == "__main__":
     het_weight = args.hetero
     binding_weight = args.bind
 
-    #dataframe for dimerization scores
-    data = {
-        "forward_read": [],
-        "reverse_read": [],
-        "forward_self_dimer": [], # self dimerization scores
-        "forward_3_end": [], # analysis for bonds near the 3' end
-        "reverse_self_dimer": [],
-        "reverse_3_end": [],
-        "het_dimer": [],
-        "het_3_end": [],
-        "combined_score": [] # combined final score to determine pair performance
-    }
     dimerization_df = pd.DataFrame(data)
 
     # dictionary for all forward and reverse dimerization data
     forward_dict = {}
     reverse_dict = {}
 
+    print(f"-----STARTING ON FORWARD READS-----")
+
     for forward_combination in forward_combinations:
         #checks/updates token if it is about to expire
         access_token, expire_time = token_updater(access_token, expire_time)
 
-        # Find self-dimerization scores for all forward combinations
-        forward_sequence = forward_primer + forward_combination
-        forward_self_dimer = self_dimerization(forward_sequence, access_token)[0]
-        forward_score = forward_self_dimer["DeltaG"]
+        print(f"starting forward: {forward_combination}, time: {time.time()}")
 
-        # for 3' end binding analysis
-        forward_binding = forward_self_dimer["Bonds"]
-        forward_top_padding = forward_self_dimer["TopLinePadding"]
-        forward_bond_padding = forward_self_dimer["BondLinePadding"]
-        forward_bottom_padding = forward_self_dimer["BottomLinePadding"]
-        forward_top_end, forward_bottom_end = binding_location_calculator(
-            forward_sequence,
-            forward_binding,
-            forward_top_padding,
-            forward_bond_padding,
-            forward_bottom_padding,
-            OFFSET
-        )
-        print(f"Forward self dimerization score for {forward_combination}: {forward_score}")
+        # updates dictionary with information on new read based on IDT API
+        forward_dict[forward_combination] = self_dimer_scoring(forward_primer, forward_combination, access_token)
 
-        # updates dictionary with new reverse read
-        forward_dict[forward_combination] = [(forward_top_end + forward_bottom_end), forward_score, forward_sequence]
         # Delay for less than 500 API calls per minute
         time.sleep(DELAY)
 
+    print(f"-----STARTING ON REVERSE READS-----")
 
     for reverse_combination in reverse_combinations:
         # checks/updates access tokens
         access_token, expire_time = token_updater(access_token, expire_time)
 
-        # Find self-dimerization scores for all reverse combinations
-        reverse_sequence = reverse_primer + reverse_combination
-        reverse_self_dimerization = self_dimerization(reverse_sequence, access_token)[0]
-        reverse_score = reverse_self_dimerization["DeltaG"]
-
-        # for 3' end binding analysis
-        reverse_binding = reverse_self_dimerization["Bonds"]
-        reverse_top_padding = reverse_self_dimerization["TopLinePadding"]
-        reverse_bond_padding = reverse_self_dimerization["BondLinePadding"]
-        reverse_bottom_padding = reverse_self_dimerization["BottomLinePadding"]
-        reverse_top_end, reverse_bottom_end = binding_location_calculator(
-            reverse_sequence,
-            reverse_binding,
-            reverse_top_padding,
-            reverse_bond_padding,
-            reverse_bottom_padding,
-            OFFSET
-        )
-        print(f"Reverse self dimerization score for {reverse_combination}: {reverse_score}")
+        print(f"starting reverse: {reverse_combination}, time: {time.time()}")
 
         # Updates dictionary with new reverse read
-        reverse_dict[reverse_combination] = [(reverse_top_end + reverse_bottom_end), reverse_score, reverse_sequence]
+        reverse_dict[reverse_combination] = self_dimer_scoring(reverse_raw, reverse_combination, access_token)
+
         #Delay for 300 API calls per minute
         time.sleep(DELAY)
+
+    print(f"-----STARTING ON HETERO-DIMERIZATION READS-----")
 
     # Heterogeneous binding analysis
     for forward_combination in forward_combinations:
         for reverse_combination in reverse_combinations:
             # Checks for access tokens and expiry time
             access_token, expire_time = token_updater(access_token, expire_time)
+
+            print(f"starting hetero: {forward_combination} and {reverse_combination}, time: {time.time()}")
 
             #Find hetero-dimerization scores for all forward and reverse pairings
             forward_self_end, forward_self_score, forward_self_sequence = forward_dict[forward_combination]
