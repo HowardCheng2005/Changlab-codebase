@@ -88,9 +88,9 @@ if __name__ == "__main__":
     parser.add_argument("-sd", "--self", required=False, default=1, type=int, help="self-dimerization weight")
     parser.add_argument("-hd", "--hetero", required=False, default=1, type=int, help="heterogeneous dimerization weight")
     parser.add_argument("-bd", "--bind", required=False, default=0, type=int, help="binding dimerization location weight")
-    parser.add_argument("hp", "--hairpin", required=False, default=0, type=int, help="hairpin formation weight")
-    parser.add_argument("-l", "--length", required=True, type=int, help="length of binding sequence")
+    parser.add_argument("-hp", "--hairpin", required=False, default=0, type=int, help="hairpin formation weight")
     parser.add_argument("-t", "--topn", type=int, required=False, default=1, help="range of top n binding sequences in dimerization")
+    parser.add_argument("-l", "--length", required=True, type=int, help="length of binding sequence")
     parser.add_argument("-i", "--id", required=True, help="id of the IDT account")
     parser.add_argument("-sc", "--secret", required=True, help="secret of the IDT account")
     parser.add_argument("-u", "--username", required=True, help="username of the IDT account")
@@ -149,7 +149,7 @@ if __name__ == "__main__":
         self_dimer_output = self_dimer_scoring(forward_primer, forward_combination, access_token)
         hairpin_output = hairpin_scoring(forward_primer, forward_combination, access_token)
 
-        forward_output = self_dimer_output.append(hairpin_output)
+        forward_output = self_dimer_output + [hairpin_output]
 
         # updates dictionary with information on new read based on IDT API
         forward_dict[forward_combination] = forward_output
@@ -167,7 +167,8 @@ if __name__ == "__main__":
 
         self_dimer_output = self_dimer_scoring(reverse_primer, reverse_combination, access_token)
         hairpin_output = hairpin_scoring(reverse_primer, reverse_combination, access_token)
-        reverse_output = self_dimer_output.append(hairpin_output)
+
+        reverse_output = self_dimer_output + [hairpin_output]
 
         # Updates dictionary with new reverse read
         reverse_dict[reverse_combination] = reverse_output
@@ -233,7 +234,7 @@ if __name__ == "__main__":
                                                 het_weight * top_het_ends)
 
             # IF hp != 0, factors in whether hairpin formation in the forward and reverse reads for the model
-            combined_score -= hairpin_weight * (forward_hairpin + reverse_hairpin)
+            combined_score += hairpin_weight * (forward_hairpin + reverse_hairpin)
 
             # new row in combination
             new_combination = pd.DataFrame([{
