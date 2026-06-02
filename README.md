@@ -13,6 +13,7 @@ self-dimerization and heterogenous dimerization scores
 * -sd: self-dimerization weight for tuning (optional sd = 1)
 * -hd: heterogeneous dimerization weight for tuning (optional hd = 1)
 * -bd: weight for checking dimerization in the last 15 nucleotides of the binding region (optional bd = 0) 
+* -hp: weight for hairpin sequence checking in the forward and reverse reads (optional hp = 0)
 * -l: length for the binding sequence itself
 * -i: id for API
 * -sc: secret for API
