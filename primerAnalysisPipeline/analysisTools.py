@@ -2,6 +2,21 @@ from base64 import b64encode
 import json
 from urllib import request, parse
 
+q5_hairpin = {
+  "NaConc": 50,
+  "FoldingTemp": 68,
+  "MgConc": 2,
+  "NucleotideType": "DNA"
+}
+
+q5_analyze = {
+  "NaConc": 50,
+  "MgConc": 2,
+  "dNTPsConc": 0.2,
+  "OligoConc": 0.5,
+  "NucleotideType": "DNA"
+}
+
 def get_primer_combinations(sequence, length):
     """
     Create a list of possible binding sequence combinations based on a set region and a predetermined length
@@ -159,10 +174,7 @@ def hairpin_analyzer(sequence, access_token):
     # import format for the Hairpin Analyzer
     hairpin_input = {
         "Sequence": input_sequence,
-        "NaConc": 50,
-        "FoldingTemp": 25,
-        "MgConc": 3,
-        "NucleotideType": "DNA"
+        **q5_hairpin,
     }
 
     req = request.Request(
@@ -180,6 +192,42 @@ def hairpin_analyzer(sequence, access_token):
 
     return json.loads(body)
 
+def analyze(sequence, access_token):
+    """
+    Analyzes the sequence for general melting temperature and characteristics. Sequence analysis is based off of the q5
+    high fidelity DNA polymerase
+
+    :param sequence: primer sequence to be analyzed
+    :param access_token: the access token for the IDT API
+    :return: Returns a dictionary containing general information about the primer sequence, importantly melting temperature
+    """
+    url = "https://www.idtdna.com/restapi/v1/OligoAnalyzer/Analyze"
+    input_sequence = sequence.strip().upper()
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    }
+
+    analyze_input = {
+        "Sequence": input_sequence,
+        **q5_analyze
+    }
+
+    req = request.Request(
+        url=url,
+        data=json.dumps(analyze_input).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+
+    response = request.urlopen(req)
+    body = response.read().decode()
+
+    if response.status != 200:
+        raise RuntimeError(f"Request failed with error code: {response.status}. Body: {body}")
+    return json.loads(body)
 
 def binding_location_calculator(top_sequence,
                                 bond_sequence,
