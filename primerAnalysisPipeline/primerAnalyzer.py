@@ -299,7 +299,7 @@ if __name__ == "__main__":
                 "combined_score": combined_score,
                 "forward_hairpin": forward_hairpin,
                 "reverse_hairpin": reverse_hairpin,
-                "melting_temp_distance": forward_melting_temp + reverse_melting_temp,
+                "melting_temp_distance": f"forward: {forward_melting_temp}, reverse: {reverse_melting_temp}",
                 "binding_positions": f"forward: {forward_pos},reverse: {reverse_pos}"
             }])
 
