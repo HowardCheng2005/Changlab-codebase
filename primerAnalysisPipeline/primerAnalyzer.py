@@ -14,6 +14,7 @@ import time
 OFFSET = 15
 DELAY = 0.1
 OPTIMAL_TEMP = 68
+OPTIMAL_OFFSET = 35
 
 #dataframe for dimerization scores
 data = {
@@ -28,7 +29,8 @@ data = {
     "combined_score": [], # combined final score to determine pair performance
     "forward_hairpin": [], # score for hairpin sequence analysis
     "reverse_hairpin": [],
-    "melting_temp_distance": []
+    "melting_temp_distance": [], # the combined melting point difference from 68 for both primers
+    "binding_positions": [] # the position of the binding regions for the forward and reverse primers
 }
 
 def token_updater(access_token, expire_time):
@@ -48,7 +50,7 @@ def melting_temp_analysis (primer, combination, token):
     analyze_result = analyze(sequence, token)
 
     melting_temp = analyze_result["MeltTemp"]
-    temp_distance = melting_temp - OPTIMAL_TEMP
+    temp_distance = abs(melting_temp - OPTIMAL_TEMP)
     return temp_distance
 
 def self_dimer_scoring (primer, combination, token):
@@ -97,6 +99,17 @@ def hairpin_scoring (primer, combination, token):
 
     return hairpin_score
 
+def position_offset(forward_position, reverse_position):
+    forward_end = forward_position + binding_sequence_length
+    reverse_end = reverse_position + binding_sequence_length
+    forward_optimal_pos = len(forward_raw) - OPTIMAL_OFFSET
+    reverse_optimal_pos = len(reverse_raw) - OPTIMAL_OFFSET
+
+    forward_offset = abs(forward_end - forward_optimal_pos)
+    reverse_offset = abs(reverse_end - reverse_optimal_pos)
+
+    return forward_offset + reverse_offset
+
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-f", "--forward", required=True, help="forward binding sequence")
@@ -107,7 +120,8 @@ if __name__ == "__main__":
     parser.add_argument("-hd", "--hetero", required=False, default=1, type=int, help="heterogeneous dimerization weight")
     parser.add_argument("-bd", "--bind", required=False, default=0, type=int, help="binding dimerization location weight")
     parser.add_argument("-hp", "--hairpin", required=False, default=0, type=int, help="hairpin formation weight")
-    parser.add_argument("-tw", "--temp", required=False, default=0, type=int, help="temperature weight")
+    parser.add_argument("-tm", "--temp", required=False, default=0, type=int, help="temperature weight")
+    parser.add_argument("-pw", "--pos", required=False, default = 0, type = int, help="position offset weight")
     parser.add_argument("-t", "--topn", type=int, required=False, default=1, help="range of top n binding sequences in dimerization")
     parser.add_argument("-l", "--length", required=True, type=int, help="length of binding sequence")
     parser.add_argument("-i", "--id", required=True, help="id of the IDT account")
@@ -145,11 +159,13 @@ if __name__ == "__main__":
     forward_combinations = get_primer_combinations(forward_raw, binding_sequence_length)
     reverse_combinations = get_primer_combinations(reverse_raw, binding_sequence_length)
 
-    # weights for the self-dimerization, hetero-dimerization, binding location for dimerization, hairpin structure formation, and temperature difference
+    # weights for the self-dimerization, hetero-dimerization, binding location for dimerization,
+    # hairpin structure formation, positional offset, and temperature difference
     self_weight = args.self
     het_weight = args.hetero
     binding_weight = args.bind
     hairpin_weight = args.hairpin
+    pos_weight = args.pos
     temp_weight = args.temp
 
     dimerization_df = pd.DataFrame(data)
@@ -160,7 +176,7 @@ if __name__ == "__main__":
 
     print(f"-----STARTING ON FORWARD READS-----")
 
-    for forward_combination in forward_combinations:
+    for i, forward_combination in enumerate(forward_combinations):
         #checks/updates token if it is about to expire
         access_token, expire_time = token_updater(access_token, expire_time)
 
@@ -173,7 +189,7 @@ if __name__ == "__main__":
         # checks for melting temperature difference
         temp_output = melting_temp_analysis(forward_primer, forward_combination, access_token)
 
-        forward_output = self_dimer_output + [hairpin_output] + [temp_output]
+        forward_output = self_dimer_output + [hairpin_output] + [temp_output] + [i]
 
         # updates dictionary with information on new read based on IDT API
         forward_dict[forward_combination] = forward_output
@@ -183,7 +199,7 @@ if __name__ == "__main__":
 
     print(f"-----STARTING ON REVERSE READS-----")
 
-    for reverse_combination in reverse_combinations:
+    for j, reverse_combination in enumerate(reverse_combinations):
         # checks/updates access tokens
         access_token, expire_time = token_updater(access_token, expire_time)
 
@@ -196,7 +212,7 @@ if __name__ == "__main__":
         #checks for melting temperature difference
         temp_output = melting_temp_analysis(reverse_primer, reverse_combination, access_token)
 
-        reverse_output = self_dimer_output + [hairpin_output] + [temp_output]
+        reverse_output = self_dimer_output + [hairpin_output] + [temp_output] + [j]
 
         # Updates dictionary with new reverse read
         reverse_dict[reverse_combination] = reverse_output
@@ -215,8 +231,8 @@ if __name__ == "__main__":
             print(f"starting hetero: {forward_combination} and {reverse_combination}, time: {time.time()}")
 
             #Find hetero-dimerization scores for all forward and reverse pairings
-            forward_self_end, forward_self_score, forward_self_sequence, forward_hairpin, forward_melting_temp = forward_dict[forward_combination]
-            reverse_self_end, reverse_self_score, reverse_self_sequence, reverse_hairpin, reverse_melting_temp = reverse_dict[reverse_combination]
+            forward_self_end, forward_self_score, forward_self_sequence, forward_hairpin, forward_melting_temp, forward_pos = forward_dict[forward_combination]
+            reverse_self_end, reverse_self_score, reverse_self_sequence, reverse_hairpin, reverse_melting_temp, reverse_pos = reverse_dict[reverse_combination]
 
             # Uses API for top n heterogeneous binding scores
             het_dimerization = hetero_dimerization(forward_self_sequence, reverse_self_sequence, access_token)
@@ -267,6 +283,9 @@ if __name__ == "__main__":
             # IF tm != 0, factors in the melting point temperatures in the forward and reverse reads
             combined_score -= temp_weight * (forward_melting_temp + reverse_melting_temp)
 
+            # IF pw != 0, factors in the positional offset of the forward and reverse binding sequences to the barcode
+            combined_score -= pos_weight * position_offset(forward_pos, reverse_pos)
+
             # new row in combination
             new_combination = pd.DataFrame([{
                 "forward_read": forward_combination,
@@ -280,7 +299,8 @@ if __name__ == "__main__":
                 "combined_score": combined_score,
                 "forward_hairpin": forward_hairpin,
                 "reverse_hairpin": reverse_hairpin,
-                "melting_temp_distance": forward_melting_temp + reverse_melting_temp
+                "melting_temp_distance": forward_melting_temp + reverse_melting_temp,
+                "binding_positions": f"forward: {forward_pos},reverse: {reverse_pos}"
             }])
 
             # adds row to the database
