@@ -44,10 +44,9 @@ def token_updater(access_token, expire_time):
 
     return access_token, expire_time
 
-def melting_temp_analysis (primer, combination, token):
-    # finds how far the melting temperature of the primer is from the optimal temperature
-    sequence = primer + combination
-    analyze_result = analyze(sequence, token)
+def melting_temp_analysis (combination, token):
+    # finds how far the melting temperature of the binding site is from the optimal temperature
+    analyze_result = analyze(combination, token)
 
     melting_temp = analyze_result["MeltTemp"]
     temp_distance = abs(melting_temp - OPTIMAL_TEMP)
@@ -187,7 +186,7 @@ if __name__ == "__main__":
         # checks for hairpin formation
         hairpin_output = hairpin_scoring(forward_primer, forward_combination, access_token)
         # checks for melting temperature difference
-        temp_output = melting_temp_analysis(forward_primer, forward_combination, access_token)
+        temp_output = melting_temp_analysis(forward_combination, access_token)
 
         forward_output = self_dimer_output + [hairpin_output] + [temp_output] + [i]
 
