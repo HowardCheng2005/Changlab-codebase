@@ -9,9 +9,9 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--csv_output", required=True, help="output for distribution in .csv format")
     args = parser.parse_args()
 
-    input_file = args.parse_args().input
-    output_file = args.parse_args().output
-    csv_output = args.parse_args().output
+    input_file = args.input
+    output_file = args.output
+    csv_output = args.csv_output
 
     df = pd.read_csv(input_file)
 
