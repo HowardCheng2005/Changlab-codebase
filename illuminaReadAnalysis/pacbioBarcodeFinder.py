@@ -64,10 +64,10 @@ if __name__ == "__main__":
     with open(output_file, 'w') as f:
         json.dump(pacbio_barcodes, f)
 
-    with open(summary_file, 'w') as f:
-        f.write(f"Total Pacbio barcodes: {len(pacbio_barcodes)}\n")
-        f.write(f"Matched barcodes: {matched_barcodes}\n")
-        f.write(f"Unmatched barcodes: {unmatched_barcodes}\n")
+    with open(summary_file, 'w') as s:
+        s.write(f"Total Pacbio barcodes: {len(pacbio_barcodes)}\n")
+        s.write(f"Matched barcodes: {matched_barcodes}\n")
+        s.write(f"Unmatched barcodes: {unmatched_barcodes}\n")
 
     print(f"Total PacBio barcodes: {len(pacbio_barcodes):,}")
     print(f"Matched barcodes: {matched_barcodes:,}")
