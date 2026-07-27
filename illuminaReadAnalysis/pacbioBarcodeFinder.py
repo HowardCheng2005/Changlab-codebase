@@ -14,7 +14,7 @@ def pacbio_barcode_reader(pacbio_file):
                 continue
 
             parts = line.split()
-            frequency = int(parts[0])
+            frequency = float(parts[0])
             sequence = parts[1]
             if sequence not in barcode_dict:
                 barcode_dict[sequence] = [frequency, []]
