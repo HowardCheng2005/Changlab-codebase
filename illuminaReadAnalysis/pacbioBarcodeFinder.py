@@ -45,13 +45,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--bartender_input", required=True, help="input barcode .csv file from bartender")
     parser.add_argument("-p", "--pacbio_input", required=True, help="input Pacbio reads in .txt format")
-    parser.add_argument("-o", "--output", required=True, help="output file")
+    parser.add_argument("-o", "--output", required=True, help="output file in .json format")
+    parser.add_argument("-s", "--summary", required=True, help="summary file for output in .txt format")
 
     args = parser.parse_args()
 
     bartender_file = args.bartender_input
     pacbio_file = args.pacbio_input
     output_file = args.output
+    summary_file = args.summary
 
     pacbio_barcodes = pacbio_barcode_reader(pacbio_file)
     pacbio_cluster_finder(pacbio_barcodes, bartender_file)
@@ -61,6 +63,11 @@ if __name__ == "__main__":
 
     with open(output_file, 'w') as f:
         json.dump(pacbio_barcodes, f)
+
+    with open(summary_file, 'w') as f:
+        f.write(f"Total Pacbio barcodes: {len(pacbio_barcodes)}\n")
+        f.write(f"Matched barcodes: {matched_barcodes}\n")
+        f.write(f"Unmatched barcodes: {unmatched_barcodes}\n")
 
     print(f"Total PacBio barcodes: {len(pacbio_barcodes):,}")
     print(f"Matched barcodes: {matched_barcodes:,}")
