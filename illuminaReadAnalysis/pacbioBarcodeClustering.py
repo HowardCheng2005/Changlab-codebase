@@ -36,7 +36,6 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--cluster", required=True, help="bartender combined cluster .csv file")
     parser.add_argument("-p", "--pacbioCluster", required=True, help="pacbio barcode cluster association .json file")
     parser.add_argument("-o", "--output", required=True, help="output for cluster grouping of Pacbio barcodes in .json format")
-    parser.add_argument("-s", "--summary", required=True, help="output for summary of the clustering process in .txt format")
 
     args = parser.parse_args()
 
