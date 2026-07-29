@@ -54,11 +54,11 @@ def cluster_analysis(cluster_dict):
     summary = df.describe()
 
     plt.figure()
-    plt.hist(df, bins=num_bins)
+    plt.scatter(df["cluster_size"], df["unique_pacbio_barcodes"])
 
-    plt.xlabel("Size of cluster/number of pacbio reads in clusters")
-    plt.ylabel("Number of clusters")
-    plt.title("Histogram of size per cluster with pacbio reads included")
+    plt.xlabel("Bartender cluster size")
+    plt.ylabel("Unique PacBio barcodes in cluster")
+    plt.title("PacBio barcodes versus Bartender cluster size")
 
     plt.tight_layout()
 
@@ -70,8 +70,8 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--pacbioCluster", required=True, help="pacbio barcode cluster association .json file")
     parser.add_argument("-o", "--output", required=True, help="output for cluster grouping of Pacbio barcodes in .json format")
     parser.add_argument("-s", "--summary", required=True, help="output for summary of the clustering process in .txt format")
-    parser.add_argument("-hi", "--histogram", required=True, help="output for histogram of the pacbio cluster sizes in .png format")
-    parser.add_argument("-b", "--bins", required=True, type=int, help="number of bins for histogram plot")
+    parser.add_argument("-sc", "--scatterplot", required=True, help="output for scatterplot of the pacbio cluster sizes in .png format")
+    #parser.add_argument("-b", "--bins", required=True, type=int, help="number of bins for histogram plot")
 
     args = parser.parse_args()
 
@@ -79,8 +79,8 @@ if __name__ == "__main__":
     pacbio_file = args.pacbioCluster
     output_file = args.output
     summary_file = args.summary
-    histogram_file = args.histogram
-    num_bins = args.bins
+    scatterplot_file = args.scatterplot
+    #num_bins = args.bins
 
     pacbio_dict = get_pacbio_dict(pacbio_file)
 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
 
     plt, summary = cluster_analysis(clustered_barcodes)
 
-    plt.savefig(histogram_file, dpi=300)
+    plt.savefig(scatterplot_file, dpi=300)
     plt.close()
 
     with open(summary_file, 'w') as s:
