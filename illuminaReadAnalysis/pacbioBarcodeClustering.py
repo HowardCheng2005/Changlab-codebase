@@ -34,7 +34,7 @@ def barcode_grouping(input_file, barcode_dict):
         cluster_id = int(cluster_id)
 
         if cluster_id in cluster_dict:
-            cluster_dict[cluster_id].append(cluster_sizes[i])
+            cluster_dict[cluster_id].append(int(cluster_sizes.iloc[i]))
 
     return cluster_dict
 
