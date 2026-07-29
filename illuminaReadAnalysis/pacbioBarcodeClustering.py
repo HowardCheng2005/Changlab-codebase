@@ -92,7 +92,7 @@ if __name__ == "__main__":
     plt.close()
 
     with open(summary_file, 'w') as s:
-        json.dump(summary, s)
+        s.write((summary.to_string()))
 
     with open(output_file, 'w') as o:
         json.dump(clustered_barcodes, o)
