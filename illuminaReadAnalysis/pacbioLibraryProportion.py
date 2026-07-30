@@ -5,7 +5,7 @@ import json
 def pacbio_dictionary_creator(pacbio_file):
     with open(pacbio_file) as f:
         pacbio_dictionary = json.load(f)
-        print(len(pacbio_dictionary.keys()))
+        print(f"dictionary length: {len(pacbio_dictionary.keys())}")
 
         return pacbio_dictionary
 
@@ -31,7 +31,7 @@ def check_library_read_proportion(barcode_file, pacbio_dict, cluster_dict):
     frequency = df['Frequency']
     clusters = df['Cluster.ID']
 
-    print(sum(frequency))
+    print(f"total reads: {print(sum(frequency))}")
 
     for i, read in enumerate(reads):
         if read not in pacbio_dict:
