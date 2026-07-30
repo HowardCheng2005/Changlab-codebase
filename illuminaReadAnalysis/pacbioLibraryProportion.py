@@ -33,7 +33,7 @@ def check_library_read_proportion(barcode_file, pacbio_dict, cluster_dict):
     frequency = df['Frequency']
     clusters = df['Cluster.ID']
 
-    print(f"total reads: {print(sum(frequency))}")
+    print(f"total reads: {sum(frequency)}")
 
     for i, read in enumerate(reads):
         num_total_reads += 1
