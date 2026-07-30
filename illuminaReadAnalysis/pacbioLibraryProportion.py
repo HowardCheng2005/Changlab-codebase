@@ -26,6 +26,8 @@ def check_library_read_proportion(barcode_file, pacbio_dict, cluster_dict):
     num_unique_without_pacbio = 0
     num_total_library_reads = 0
     num_total_without_pacbio = 0
+    num_total_reads = 0
+    num_unique_reads = 0
 
     reads = df['Unique.reads']
     frequency = df['Frequency']
@@ -34,6 +36,9 @@ def check_library_read_proportion(barcode_file, pacbio_dict, cluster_dict):
     print(f"total reads: {print(sum(frequency))}")
 
     for i, read in enumerate(reads):
+        num_total_reads += 1
+        num_unique_reads += frequency[i]
+
         if read not in pacbio_dict:
             num_unique_library_reads += 1
             num_total_library_reads += frequency[i]
@@ -42,7 +47,7 @@ def check_library_read_proportion(barcode_file, pacbio_dict, cluster_dict):
                 num_unique_without_pacbio += 1
                 num_total_without_pacbio += frequency[i]
 
-    return num_unique_library_reads, num_unique_without_pacbio, num_total_library_reads, num_total_without_pacbio
+    return num_unique_library_reads, num_unique_without_pacbio, num_total_library_reads, num_total_without_pacbio, num_total_reads, num_unique_reads
 
 
 if __name__ == "__main__":
@@ -59,13 +64,17 @@ if __name__ == "__main__":
     output = args.output
 
     pacbio_dictionary = pacbio_dictionary_creator(input)
+    pacbio_dictionary_length = len(pacbio_dictionary.items())
     cluster_dictionary = pacbio_cluster_dictionary_creator(pacbio_dictionary)
 
-    unique_reads, unique_without_pacbio_reads, total_reads, total_without_pacbio_reads = check_library_read_proportion(barcode, pacbio_dictionary, cluster_dictionary)
+    unique_library_reads, unique_without_pacbio_reads, total_library_reads, total_without_pacbio_reads, total_reads, unique_reads = check_library_read_proportion(barcode, pacbio_dictionary, cluster_dictionary)
 
     with open(output, "w") as f:
-        f.write(f"Unique reads: {unique_reads}\n")
-        f.write(f"Unique no pacbio: {unique_without_pacbio_reads}\n")
+        f.write(f"Pacbio barcodes: {pacbio_dictionary_length}\n")
         f.write(f"Total reads: {total_reads}\n")
-        f.write(f"Total without pacbio: {total_without_pacbio_reads}\n")
+        f.write(f"Unique reads: {unique_reads}\n")
+        f.write(f"Unique reads that are not pacbio barcode: {unique_library_reads}\n")
+        f.write(f"Unique not in pacbio cluster: {unique_without_pacbio_reads}\n")
+        f.write(f"Total reads that are not pacbio barcode: {total_library_reads}\n")
+        f.write(f"Total not in pacbio cluster: {total_without_pacbio_reads}\n")
         f.close()
