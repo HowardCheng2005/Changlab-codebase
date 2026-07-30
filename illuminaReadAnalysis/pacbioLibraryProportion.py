@@ -29,6 +29,8 @@ def check_library_read_proportion(barcode_file, pacbio_dict, cluster_dict):
     frequency = df['Frequency']
     clusters = df['Cluster.ID']
 
+    print(sum(frequency))
+
     for i, read in enumerate(reads):
         if read not in pacbio_dict:
             num_unique_library_reads += 1
