@@ -5,6 +5,8 @@ import json
 def pacbio_dictionary_creator(pacbio_file):
     with open(pacbio_file) as f:
         pacbio_dictionary = json.load(f)
+        print(len(pacbio_dictionary.keys()))
+
         return pacbio_dictionary
 
 def pacbio_cluster_dictionary_creator(pacbio_dict):
