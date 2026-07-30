@@ -36,8 +36,8 @@ def check_library_read_proportion(barcode_file, pacbio_dict, cluster_dict):
     print(f"total reads: {sum(frequency)}")
 
     for i, read in enumerate(reads):
-        num_total_reads += 1
-        num_unique_reads += frequency[i]
+        num_total_reads += frequency[i]
+        num_unique_reads += 1
 
         if read not in pacbio_dict:
             num_unique_library_reads += 1
